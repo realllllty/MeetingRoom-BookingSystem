@@ -25,30 +25,38 @@ exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            jwt_1.JwtModule.register({
+            jwt_1.JwtModule.registerAsync({
                 global: true,
-                useFactory() { },
+                useFactory(configService) {
+                    return {
+                        secret: configService.get("jwt_secret"),
+                        signOptions: {
+                            expiresIn: "7d",
+                        },
+                    };
+                },
+                inject: [config_1.ConfigService],
             }),
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
-                envFilePath: 'src/.env',
+                envFilePath: "src/.env",
             }),
             typeorm_1.TypeOrmModule.forRootAsync({
                 useFactory(configService) {
                     return {
-                        type: 'mysql',
-                        host: configService.get('mysql_server_host'),
-                        port: configService.get('mysql_server_port'),
-                        username: configService.get('mysql_server_username'),
-                        password: configService.get('mysql_server_password'),
-                        database: configService.get('mysql_server_database'),
+                        type: "mysql",
+                        host: configService.get("mysql_server_host"),
+                        port: configService.get("mysql_server_port"),
+                        username: configService.get("mysql_server_username"),
+                        password: configService.get("mysql_server_password"),
+                        database: configService.get("mysql_server_database"),
                         synchronize: true,
                         logging: true,
                         entities: [user_entity_1.User, role_entity_1.Role, permission_entity_1.Permission],
                         poolSize: 10,
-                        connectorPackage: 'mysql2',
+                        connectorPackage: "mysql2",
                         extra: {
-                            authPlugin: 'sha256_password',
+                            authPlugin: "sha256_password",
                         },
                     };
                 },
