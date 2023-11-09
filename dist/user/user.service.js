@@ -30,13 +30,13 @@ let UserService = UserService_1 = class UserService {
                 username: loginUserDto.username,
                 isAdmin,
             },
-            relations: ['roles', 'roles.permissions'],
+            relations: ["roles", "roles.permissions"],
         });
         if (!user) {
-            throw new common_1.HttpException('用户不存在', common_1.HttpStatus.BAD_REQUEST);
+            throw new common_1.HttpException("用户不存在", common_1.HttpStatus.BAD_REQUEST);
         }
         if (user.password !== (0, utils_1.md5)(loginUserDto.password)) {
-            throw new common_1.HttpException('密码错误', common_1.HttpStatus.BAD_REQUEST);
+            throw new common_1.HttpException("密码错误", common_1.HttpStatus.BAD_REQUEST);
         }
         const vo = new login_user_vo_1.LoginUserVo();
         vo.userInfo = {
@@ -64,16 +64,16 @@ let UserService = UserService_1 = class UserService {
     async register(user) {
         const captcha = await this.redisService.get(`captcha_${user.email}`);
         if (!captcha) {
-            throw new common_1.HttpException('验证码已失效', common_1.HttpStatus.BAD_REQUEST);
+            throw new common_1.HttpException("验证码已失效", common_1.HttpStatus.BAD_REQUEST);
         }
         if (user.captcha != captcha) {
-            throw new common_1.HttpException('验证码错误', common_1.HttpStatus.BAD_REQUEST);
+            throw new common_1.HttpException("验证码错误", common_1.HttpStatus.BAD_REQUEST);
         }
         const foundUser = await this.userRepository.findOneBy({
             username: user.username,
         });
         if (foundUser) {
-            throw new common_1.HttpException('用户名已存在', common_1.HttpStatus.BAD_REQUEST);
+            throw new common_1.HttpException("用户名已存在", common_1.HttpStatus.BAD_REQUEST);
         }
         const newUser = new user_entity_1.User();
         newUser.username = user.username;
@@ -82,36 +82,36 @@ let UserService = UserService_1 = class UserService {
         newUser.nickName = user.nickName;
         try {
             await this.userRepository.save(newUser);
-            return '注册成功';
+            return "注册成功";
         }
         catch (e) {
             this.logger.error(e, UserService_1);
-            return '注册失败';
+            return "注册失败";
         }
     }
     async initData() {
         const user1 = new user_entity_1.User();
-        user1.username = 'zhangsan';
-        user1.password = (0, utils_1.md5)('111111');
-        user1.email = 'xxx@xx.com';
+        user1.username = "zhangsan";
+        user1.password = (0, utils_1.md5)("111111");
+        user1.email = "xxx@xx.com";
         user1.isAdmin = true;
-        user1.nickName = '张三';
-        user1.phoneNumber = '13233323333';
+        user1.nickName = "张三";
+        user1.phoneNumber = "13233323333";
         const user2 = new user_entity_1.User();
-        user2.username = 'lisi';
-        user2.password = (0, utils_1.md5)('222222');
-        user2.email = 'yy@yy.com';
-        user2.nickName = '李四';
+        user2.username = "lisi";
+        user2.password = (0, utils_1.md5)("222222");
+        user2.email = "yy@yy.com";
+        user2.nickName = "李四";
         const role1 = new role_entity_1.Role();
-        role1.name = '管理员';
+        role1.name = "管理员";
         const role2 = new role_entity_1.Role();
-        role2.name = '普通用户';
+        role2.name = "普通用户";
         const permission1 = new permission_entity_1.Permission();
-        permission1.code = 'ccc';
-        permission1.description = '访问 ccc 接口';
+        permission1.code = "ccc";
+        permission1.description = "访问 ccc 接口";
         const permission2 = new permission_entity_1.Permission();
-        permission2.code = 'ddd';
-        permission2.description = '访问 ddd 接口';
+        permission2.code = "ddd";
+        permission2.description = "访问 ddd 接口";
         user1.roles = [role1];
         user2.roles = [role2];
         role1.permissions = [permission1, permission2];
@@ -119,6 +119,37 @@ let UserService = UserService_1 = class UserService {
         await this.permissionRepository.save([permission1, permission2]);
         await this.roleRepository.save([role1, role2]);
         await this.userRepository.save([user1, user2]);
+    }
+    async findUserById(userId, isAdmin) {
+        const user = await this.userRepository.findOne({
+            where: {
+                id: userId,
+                isAdmin,
+            },
+            relations: ["roles", "roles.permissions"],
+        });
+        return {
+            id: user.id,
+            username: user.username,
+            isAdmin: user.isAdmin,
+            roles: user.roles.map((item) => item.name),
+            permissions: user.roles.reduce((arr, item) => {
+                item.permissions.forEach((permission) => {
+                    if (arr.indexOf(permission) === -1) {
+                        arr.push(permission);
+                    }
+                });
+                return arr;
+            }, []),
+        };
+    }
+    async findUserDetailById(userId) {
+        const user = await this.userRepository.findOne({
+            where: {
+                id: userId,
+            },
+        });
+        return user;
     }
 };
 exports.UserService = UserService;
