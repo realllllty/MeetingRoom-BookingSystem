@@ -17,6 +17,8 @@ import { Role } from "./entities/role.entity";
 import { Permission } from "./entities/permission.entity";
 import { LoginUserDto } from "./dto/login-user.dto";
 import { LoginUserVo } from "./vo/login-user.vo";
+import { UpdateUserPasswordDto } from "./dto/update-user-password.dts";
+import { Like } from "typeorm";
 
 @Injectable()
 export class UserService {
@@ -187,5 +189,147 @@ export class UserService {
     });
 
     return user;
+  }
+
+  // 通过邮箱验证码修改密码功能
+  async updatePassword(userId: number, passwordDto: UpdateUserPasswordDto) {
+    const captcha = await this.redisService.get(
+      `update_password_captcha_${passwordDto.email}`
+    );
+
+    if (!captcha) {
+      throw new HttpException("验证码不正确", HttpStatus.BAD_REQUEST);
+    }
+
+    const foundUser = await this.userRepository.findOneBy({
+      id: userId,
+    });
+
+    foundUser.password = md5(passwordDto.password);
+
+    try {
+      await this.userRepository.save(foundUser);
+      return "密码修改成功";
+    } catch (e) {
+      return "密码修改失败";
+    }
+  }
+
+  //修改一般信息
+  async update(userId: number, updateUserDto: UpdateUserDto) {
+    const captcha = await this.redisService.get(
+      `update_user_captcha_${updateUserDto.email}`
+    );
+
+    if (!captcha) {
+      throw new HttpException("验证码已失效", HttpStatus.BAD_REQUEST);
+    }
+
+    if (updateUserDto.captcha !== captcha) {
+      throw new HttpException("验证码不正确", HttpStatus.BAD_REQUEST);
+    }
+
+    const foundUser = await this.userRepository.findOneBy({
+      id: userId,
+    });
+
+    if (updateUserDto.nickName) {
+      foundUser.nickName = updateUserDto.nickName;
+    }
+    if (updateUserDto.headPic) {
+      foundUser.headPic = updateUserDto.headPic;
+    }
+
+    try {
+      await this.userRepository.save(foundUser);
+      return "用户信息修改成功";
+    } catch (e) {
+      this.logger.error(e, UserService);
+      return "用户信息修改成功";
+    }
+  }
+
+  // 冻结用户账号
+  async freezeUserById(id: number) {
+    const user = await this.userRepository.findOneBy({
+      id: id,
+    });
+    user.isFrozen = true;
+    this.userRepository.save(user);
+  }
+
+  // 分页查询用户
+  // 对应mysql 语句 select * from users limit 0,2
+  async findUsersByPage(pageNo: number, pageSize: number) {
+    if (pageSize <= 1 || pageNo <= 0) {
+      throw new HttpException("页数或是分页数错误", HttpStatus.BAD_REQUEST);
+    }
+    // 计算出LIMIT
+    const skipCount = (pageNo - 1) * pageSize;
+
+    const [users, totalCount] = await this.userRepository.findAndCount({
+      select: [
+        "id",
+        "username",
+        "nickName",
+        "email",
+        "phoneNumber",
+        "isFrozen",
+        "headPic",
+        "createTime",
+      ],
+      skip: skipCount,
+      take: pageSize,
+    });
+
+    return {
+      users,
+      totalCount,
+    };
+  }
+
+  async findUsers(
+    username: string,
+    nickName: string,
+    email: string,
+    pageNo: number,
+    pageSize: number
+  ) {
+    const skipCount = (pageNo - 1) * pageSize;
+
+    // 空对象, 用于方便后续添加搜索条件
+    const condition: Record<string, any> = {};
+
+    // Like函数允许在字段搜索中包含特定字符串的记录
+    if (username) {
+      condition.username = Like(`%${username}%`);
+    }
+    if (nickName) {
+      condition.nickName = Like(`%${nickName}%`);
+    }
+    if (email) {
+      condition.email = Like(`%${email}%`);
+    }
+
+    const [users, totalCount] = await this.userRepository.findAndCount({
+      select: [
+        "id",
+        "username",
+        "nickName",
+        "email",
+        "phoneNumber",
+        "isFrozen",
+        "headPic",
+        "createTime",
+      ],
+      skip: skipCount,
+      take: pageSize,
+      where: condition, // 查询条件
+    });
+
+    return {
+      users,
+      totalCount,
+    };
   }
 }

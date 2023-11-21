@@ -20,6 +20,7 @@ const utils_1 = require("../utils");
 const role_entity_1 = require("./entities/role.entity");
 const permission_entity_1 = require("./entities/permission.entity");
 const login_user_vo_1 = require("./vo/login-user.vo");
+const typeorm_3 = require("typeorm");
 let UserService = UserService_1 = class UserService {
     constructor() {
         this.logger = new common_1.Logger();
@@ -150,6 +151,112 @@ let UserService = UserService_1 = class UserService {
             },
         });
         return user;
+    }
+    async updatePassword(userId, passwordDto) {
+        const captcha = await this.redisService.get(`update_password_captcha_${passwordDto.email}`);
+        if (!captcha) {
+            throw new common_1.HttpException("验证码不正确", common_1.HttpStatus.BAD_REQUEST);
+        }
+        const foundUser = await this.userRepository.findOneBy({
+            id: userId,
+        });
+        foundUser.password = (0, utils_1.md5)(passwordDto.password);
+        try {
+            await this.userRepository.save(foundUser);
+            return "密码修改成功";
+        }
+        catch (e) {
+            return "密码修改失败";
+        }
+    }
+    async update(userId, updateUserDto) {
+        const captcha = await this.redisService.get(`update_user_captcha_${updateUserDto.email}`);
+        if (!captcha) {
+            throw new common_1.HttpException("验证码已失效", common_1.HttpStatus.BAD_REQUEST);
+        }
+        if (updateUserDto.captcha !== captcha) {
+            throw new common_1.HttpException("验证码不正确", common_1.HttpStatus.BAD_REQUEST);
+        }
+        const foundUser = await this.userRepository.findOneBy({
+            id: userId,
+        });
+        if (updateUserDto.nickName) {
+            foundUser.nickName = updateUserDto.nickName;
+        }
+        if (updateUserDto.headPic) {
+            foundUser.headPic = updateUserDto.headPic;
+        }
+        try {
+            await this.userRepository.save(foundUser);
+            return "用户信息修改成功";
+        }
+        catch (e) {
+            this.logger.error(e, UserService_1);
+            return "用户信息修改成功";
+        }
+    }
+    async freezeUserById(id) {
+        const user = await this.userRepository.findOneBy({
+            id: id,
+        });
+        user.isFrozen = true;
+        this.userRepository.save(user);
+    }
+    async findUsersByPage(pageNo, pageSize) {
+        if (pageSize <= 1 || pageNo <= 0) {
+            throw new common_1.HttpException("页数或是分页数错误", common_1.HttpStatus.BAD_REQUEST);
+        }
+        const skipCount = (pageNo - 1) * pageSize;
+        const [users, totalCount] = await this.userRepository.findAndCount({
+            select: [
+                "id",
+                "username",
+                "nickName",
+                "email",
+                "phoneNumber",
+                "isFrozen",
+                "headPic",
+                "createTime",
+            ],
+            skip: skipCount,
+            take: pageSize,
+        });
+        return {
+            users,
+            totalCount,
+        };
+    }
+    async findUsers(username, nickName, email, pageNo, pageSize) {
+        const skipCount = (pageNo - 1) * pageSize;
+        const condition = {};
+        if (username) {
+            condition.username = (0, typeorm_3.Like)(`%${username}%`);
+        }
+        if (nickName) {
+            condition.nickName = (0, typeorm_3.Like)(`%${nickName}%`);
+        }
+        if (email) {
+            condition.email = (0, typeorm_3.Like)(`%${email}%`);
+        }
+        const [users, totalCount] = await this.userRepository.findAndCount({
+            select: [
+                "id",
+                "username",
+                "nickName",
+                "email",
+                "phoneNumber",
+                "isFrozen",
+                "headPic",
+                "createTime",
+            ],
+            skip: skipCount,
+            take: pageSize,
+            where: condition,
+        });
+        return {
+            users,
+            totalCount,
+        };
     }
 };
 exports.UserService = UserService;

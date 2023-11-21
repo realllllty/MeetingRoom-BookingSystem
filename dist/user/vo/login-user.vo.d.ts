@@ -1,4 +1,4 @@
-interface UserInfo {
+declare class UserInfo {
     id: number;
     username: string;
     nickName: string;

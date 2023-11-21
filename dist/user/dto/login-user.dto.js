@@ -10,20 +10,23 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LoginUserDto = void 0;
+const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 class LoginUserDto {
 }
 exports.LoginUserDto = LoginUserDto;
 __decorate([
     (0, class_validator_1.IsNotEmpty)({
-        message: '用户名不能为空',
+        message: "用户名不能为空",
     }),
+    (0, swagger_1.ApiProperty)(),
     __metadata("design:type", String)
 ], LoginUserDto.prototype, "username", void 0);
 __decorate([
     (0, class_validator_1.IsNotEmpty)({
-        message: '密码不能为空',
+        message: "密码不能为空",
     }),
+    (0, swagger_1.ApiProperty)(),
     __metadata("design:type", String)
 ], LoginUserDto.prototype, "password", void 0);
 //# sourceMappingURL=login-user.dto.js.map
